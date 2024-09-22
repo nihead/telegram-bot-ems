@@ -25,7 +25,7 @@ def create_table(conn, create_table_sql):
         print(e)
 
 def is_db():
-    return os.path.isfile("./team_ems.db")
+    return os.path.isfile("team_ems.db")
 
 
 def table_exists(table_name):
@@ -127,6 +127,4 @@ def main():
 
 
 if __name__ == '__main__':
-    if not is_db():
-        db_init()
-    print(read_all())
+    print(is_db())
