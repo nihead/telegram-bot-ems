@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "telegram-bot-starter"
+name = "telegram-bot-ems"
 version = "0.1.0"
 description = ""
-authors = ["fauzaanu <fauzaangasim@gmail.com>"]
+authors = ["noHead"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
