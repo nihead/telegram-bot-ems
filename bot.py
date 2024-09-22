@@ -37,8 +37,9 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
+    cid = update.message.chat.id
     await update.message.reply_html(
-        rf"Hi {user.mention_html()}!",
+        rf"Welecome {user.mention_html()}\nYour id: {cid}!",
         reply_markup=ForceReply(selective=True),
     )
 
