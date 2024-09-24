@@ -102,26 +102,14 @@ async def inline_button(update: Update, context) -> None:
         else:
             alert = await query.message.reply_text("May be you are on list")
             print(alert.chat_id)
-            # pythoncom.CoInitialize()
-            Thread(target=delete_alert, daemon=True, args=(alert,)).start()
-            # Thread(target=delete_message_in_thread, args=(
-            #     context.bot,  # The bot instance
-            #     alert.chat_id,  # The chat ID of the sent message
-            #     alert.message_id  # The message ID of the sent message
-            # )).start()
+            await asyncio.sleep(1)
+            await alert.delete()
 
         # await query.edit_message_text(text="You pressed: IN")
     elif query.data == 'OUT':
         await query.edit_message_text(text="You pressed: OUT")
 
     await query.answer()
-
-
-async def delete_message_in_thread(bot, chat_id, message_id):
-    # Sleep for 5 seconds
-    time.sleep(5)
-    # Delete the message (this will run in a separate thread)
-    await bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
