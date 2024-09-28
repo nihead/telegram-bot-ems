@@ -119,8 +119,16 @@ class Db():
             print(e)
             return False
 
+        # get list of gid from groups
+    def get_gids(self) -> list[int]:
+        gid_list = []
+        groups = self.pb.collection('groups').get_list(1, 20, {"filter": 'allowed = true'})
+        for group in groups.items:
+            gid_list.append(group.gid)
+        return gid_list
+
 
 if __name__ == "__main__":
     pb = Db()
-    active = pb.team_list()
+    active = pb.get_gids()
     print(active)

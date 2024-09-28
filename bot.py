@@ -350,19 +350,30 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # Function to trigger when a bot is added to a group
 async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("new Group added")
+    allowed_gid = Db().get_gids()
     gid = update.my_chat_member.chat.id
     print(gid)
     print(update.effective_chat.id)
     # Leave the group
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"SORRY!\nYou are not Subscriber"
-    )
-    await context.bot.leave_chat(chat_id=gid)
-    await context.bot.send_message(
-        chat_id=498123938,
-        text=f"New group add Alerted\nGroup id = {gid}"
-    )
+    if gid in allowed_gid:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Im at Your service, let me mange Team list"
+        )
+        await context.bot.send_message(
+            chat_id=498123938,
+            text=f"Allowed group Added\nGroup id = {gid}"
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"SORRY!\nYou are not Subscriber"
+        )
+        await context.bot.leave_chat(chat_id=gid)
+        await context.bot.send_message(
+            chat_id=498123938,
+            text=f"New group add Alerted\nGroup id = {gid}"
+        )
 
 
 def main() -> None:
