@@ -66,6 +66,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     m = update.message.text.split('\n')
+    u_name = update.effective_user.full_name
+
     try:
         mp = int(m[2])
         mr = int(m[3])
@@ -102,7 +104,7 @@ Thank you for your patience."""
         # create kulhun
         await context.bot.send_message(
             chat_id=update.message.chat_id,
-            text=f"Team listing session started with\nMax players = {mp}\nMax reserved = {mr}",
+            text=f"<b>{u_name}</b>, Started Team listing session\nMax players = {mp}\nMax reserved = {mr}",
             parse_mode="HTML",
         )
 
