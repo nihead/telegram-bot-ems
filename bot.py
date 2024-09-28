@@ -223,7 +223,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await asyncio.sleep(2)
         await alert.delete()
     else:
-        await update.message.reply_text(update.message.text)
+        pass
 
 
 async def add_to_db(tid, query, context):
