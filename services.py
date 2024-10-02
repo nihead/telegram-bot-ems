@@ -119,7 +119,8 @@ class Db():
         try:
             players = self.pb.collection('team').get_list(1, 20, {"filter": f'active = true && tid={tid}'})
             reserved = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = false'})
-            self.pb.collection('team').update(players.items[0].id, {"active": False})
+            # self.pb.collection('team').update(players.items[0].id, {"active": False})
+            self.pb.collection('team').delete(players.items[0].id)
             if reserved.total_items > 0:
                 self.pb.collection('team').update(reserved.items[0].id, {"on_team": True})
 
