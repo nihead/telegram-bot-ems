@@ -165,7 +165,7 @@ async def inline_button(update: Update, context) -> None:
             if pb_db.on_list(chat_id) > 0:
                 await context.bot.send_message(
                     chat_id=query.message.chat_id,
-                    text=f"{username}  takes a name off the list.",
+                    text=f"{username}  takes his name off the list.",
                     parse_mode="HTML"
                 )
                 # await query.edit_message_reply_markup(reply_markup=None)

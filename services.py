@@ -28,8 +28,12 @@ class Db():
     def all_attended(self):
         players = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true'})
         for player in players.items:
-            self.pb.collection('team').update(player.id, {"active": False})
-            self.pb.collection('team').update(player.id, {"attended": True})
+            self.pb.collection('team').update(player.id, {"active": False, "attended": True})
+
+            # update player info total_attended from player where tid = tid
+            tid = self.pb.collection('team').get_one(player.id).tid
+            player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
+            self.pb.collection('players').update(player[0].id, {"total_attended": player[0].total_attended + 1})
 
     def create_kulhun(self, tid: int, desc: str, mid: int, mp=14, mr=3):
         # check for on goin polling
@@ -71,6 +75,9 @@ class Db():
             }
 
             self.pb.collection('team').create(body)
+            # update player info total_enrolled from player where tid = tid
+            player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
+            self.pb.collection('players').update(player[0].id, {"total_enrolled": player[0].total_enrolled+1})
             return True
         except Exception as e:
             print(f'In db uodate error {e}')
@@ -82,7 +89,8 @@ class Db():
         try:
             body = {
                 "tid": tid,
-                "t_name": str(name)
+                "t_name": str(name),
+                "u_name": str(name),
             }
             self.pb.collection('players').create(body)
             return True
@@ -114,6 +122,10 @@ class Db():
             self.pb.collection('team').update(players.items[0].id, {"active": False})
             if reserved.total_items > 0:
                 self.pb.collection('team').update(reserved.items[0].id, {"on_team": True})
+
+            # update player info total_enrolled from player where tid = tid
+            player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
+            self.pb.collection('players').update(player[0].id, {"total_enrolled": player[0].total_enrolled - 1})
             return True
         except Exception as e:
             print(e)
