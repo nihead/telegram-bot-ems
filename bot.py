@@ -63,6 +63,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text("keep thinking!")
 
 
+async def alert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /alert is issued."""
+    await update.message.delete()
+    msg = update.message.text.strip('/alert')
+    await context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text="<pre>Notification</pre>",
+        parse_mode='HTML'
+    )
+    await asyncio.sleep(1)
+    await context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text=msg,
+        parse_mode='HTML'
+    )
+
+
 async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     m = update.message.text.split('\n')
@@ -110,13 +127,13 @@ Thank you for your patience."""
 
         await asyncio.sleep(2)
 
-        kulhun = await context.bot.send_message(
+        k = await context.bot.send_message(
             chat_id=update.message.chat_id,
             text=f_msg,
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(kb_i_o)
         )
-        pb_db.create_kulhun(update.message.from_user.id, desc, kulhun.message_id, mp, mr)
+        pb_db.create_kulhun(update.message.from_user.id, desc, k.message_id, mp, mr)
 
 
 # Define a function to handle button press events
@@ -138,7 +155,7 @@ async def inline_button(update: Update, context) -> None:
                 print("Making team list")
                 team_list = pb_db.team_list()
                 # get descrption from kulhun
-                desc = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
+                desc = pb_db.pb.collection('kulhun').get_list(1, 30, {"filter": 'completed = false'}).items[
                     0].description
                 team_msg = f"""
 <u>Team List</u>
@@ -212,7 +229,8 @@ async def inline_button(update: Update, context) -> None:
                 await warning.delete()
 
     except Exception as e:
-        print(f"Call back error\n {e}")
+        await on_error(context, "inline Query", e)
+
     finally:
         await query.answer()
 
@@ -229,6 +247,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def add_to_db(tid, query, context):
+
     pb = Db()
     no_players = pb.no_players()
     max_players = pb.max_players()
@@ -238,6 +257,7 @@ async def add_to_db(tid, query, context):
 
     # players limit check
     if pb.on_list(tid) == 0:
+
         if no_players < total_players:
             if no_players < max_players:
                 if pb.add_to_team(tid, True):
@@ -299,7 +319,7 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 reply_markup=None
             )
         except Exception as e:
-            print(e)
+            await on_error(context, "completed", e)
 
         # mark active session as completed
         pb_db.pb.collection('kulhun').update(
@@ -378,6 +398,13 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def on_error(context, fun, msg) -> None:
+    await context.bot.send_message(
+        chat_id=498123938,
+        text=f"Error while exc {fun}\n{msg}"
+    )
+
+
 def main() -> None:
     """Start the bot."""
     load_dotenv()
@@ -389,6 +416,7 @@ def main() -> None:
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("alert", alert_command))
     application.add_handler(CommandHandler("team", team_maker))
     application.add_handler(CommandHandler("completed", completed))
     application.add_handler(CallbackQueryHandler(inline_button))

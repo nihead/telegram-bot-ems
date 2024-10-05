@@ -35,7 +35,7 @@ class Db():
             player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
             self.pb.collection('players').update(player[0].id, {"total_attended": player[0].total_attended + 1})
 
-    def create_kulhun(self, tid: int, desc: str, mid: int, mp=14, mr=3):
+    def create_kulhun(self, tid: int, desc: str, mid: int, mp=14, mr=3) -> str:
         # check for on goin polling
         try:
             p_sess = self.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'})
@@ -49,12 +49,13 @@ class Db():
                     "max_players": mp,
                     "max_reserves": mr,
                     "completed": False,
-                    "message_id": mid
+                    "message_id": mid,
+                    "player": self.pb.collection('players').get_first_list_item(filter=f'tid = {tid}').id
                 }
-                self.pb.collection('kulhun').create(body)
-                return True
+                kulhun = self.pb.collection('kulhun').create(body)
+                return kulhun.id
             else:
-                return False
+                return '0'
         except Exception as e:
             print("Error in some where")
             print(e)
@@ -66,18 +67,21 @@ class Db():
 
     def add_to_team(self, tid, on_team):
         try:
+            player =  self.pb.collection('players').get_first_list_item(filter=f'tid = {tid}')
             body = {
                 "tid": tid,
                 "active": True,
                 "attended": False,
-                "on_team": on_team
+                "on_team": on_team,
+                "kulhun": self.pb.collection('kulhun').get_first_list_item(filter='completed = true').id,
+                "player": player.id
 
             }
 
             self.pb.collection('team').create(body)
             # update player info total_enrolled from player where tid = tid
             player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
-            self.pb.collection('players').update(player[0].id, {"total_enrolled": player[0].total_enrolled+1})
+            self.pb.collection('players').update(player.id, {"total_enrolled": player.total_enrolled+1})
             return True
         except Exception as e:
             print(f'In db uodate error {e}')
@@ -99,17 +103,34 @@ class Db():
             return False
 
     def team_list(self) -> str:
-        players = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = true'})
-        reserved = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = false'})
+        # players = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = true'})
+        # reserved = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = false'})
         team_list = ''
+        # Fetch team members
+        players = self.pb.collection('team').get_list(
+            page=1,
+            per_page=20,
+            query_params={
+                "filter": 'active = true && on_team = true',
+                "expand": 'player'
+            }
+        )
+        reserved = self.pb.collection('team').get_list(
+            page=1,
+            per_page=20,
+            query_params={
+                "filter": 'active = true && on_team = false',
+                "expand": 'player'
+            }
+        )
         for i, playe in enumerate(players.items):
-            name = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {playe.tid}'}).items[0].t_name
+            name = playe.expand['player'].t_name
             team_list += f"{i + 1}. {name}\n"
 
         if reserved.total_items > 0:
             team_list += f"-------------------\nRESERVED\n-------------------\n"
             for i, res in enumerate(reserved.items):
-                name = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {res.tid}'}).items[0].t_name
+                name = res.expand['player'].t_name
                 team_list += f"{i + 1}. {name}\n"
         return team_list
 
@@ -143,5 +164,5 @@ class Db():
 
 if __name__ == "__main__":
     pb = Db()
-    active = pb.get_gids()
+    active = pb.team_list()
     print(active)
