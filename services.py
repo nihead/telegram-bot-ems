@@ -68,6 +68,7 @@ class Db():
     def add_to_team(self, tid, on_team):
         try:
             player =  self.pb.collection('players').get_first_list_item(filter=f'tid = {tid}')
+            print(player.id)
             body = {
                 "tid": tid,
                 "active": True,
@@ -80,7 +81,7 @@ class Db():
 
             self.pb.collection('team').create(body)
             # update player info total_enrolled from player where tid = tid
-            player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
+            # player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
             self.pb.collection('players').update(player.id, {"total_enrolled": player.total_enrolled+1})
             return True
         except Exception as e:
@@ -164,5 +165,5 @@ class Db():
 
 if __name__ == "__main__":
     pb = Db()
-    active = pb.team_list()
+    active = pb.add_to_team(498123938, True)
     print(active)

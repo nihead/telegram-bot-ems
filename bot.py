@@ -91,7 +91,7 @@ async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     except Exception as e:
         print(e)
         mp = 14
-        mr = 4
+        mr = 2
 
     try:
         desc = m[1]
