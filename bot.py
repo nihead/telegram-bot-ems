@@ -362,8 +362,8 @@ async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             message_id = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
                 0].message_id
 
-
             await context.bot.delete_message(
+                chat_id=-1001912301677,
                 message_id=message_id
             )
 
