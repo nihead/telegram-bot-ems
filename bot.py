@@ -333,11 +333,6 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         # mark attended as true on all team
         pb_db.all_attended()
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="All players marked as attended.",
-            parse_mode="HTML"
-        )
 
         await context.bot.send_message(
             chat_id=update.message.chat_id,
@@ -352,6 +347,75 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
     await info.delete()
+
+
+async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # deleting command
+    await update.message.delete()
+
+    # creating pocketbase instance
+    pb_db = Db()
+
+    if pb_db.active_seesion():
+        # remove inline keyboard from privious listing with message id from kulhun
+        try:
+            message_id = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
+                0].message_id
+
+
+            await context.bot.delete_message(
+                message_id=message_id
+            )
+
+        except Exception as e:
+            await on_error(context, "completed", e)
+
+        await context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="see you soon",
+            parse_mode="HTML"
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="No active team listing session is currently in progress.",
+            parse_mode="HTML"
+        )
+
+    try:
+
+        # recreate team list
+        kulhun  = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0]
+        gid = -1001912301677
+        team_list = pb_db.team_list()
+        # get descrption from kulhun
+        desc = kulhun.description
+        team_msg = f"""
+<u>Team List</u>
+<i>{desc}</i>
+---------------------
+<u><b>ONTEAM</b></u>
+---------------------
+{team_list}
+"""
+
+        new_list = await context.bot.send_message(
+            chat_id=gid,
+            text=team_msg,
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(kb_i_o)
+        )
+
+
+
+        # update new message id
+        pb_db.pb.collection('kulhun').update(
+            pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0].id,
+            {"message_id": new_list.message_id})
+
+
+    except Exception as e:
+        await on_error(context, "Relisting error\n", e)
 
 
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -419,6 +483,7 @@ def main() -> None:
     application.add_handler(CommandHandler("alert", alert_command))
     application.add_handler(CommandHandler("team", team_maker))
     application.add_handler(CommandHandler("completed", completed))
+    application.add_handler(CommandHandler("relist", relist))
     application.add_handler(CallbackQueryHandler(inline_button))
     application.add_handler(ChatMemberHandler(new_member, ChatMemberHandler.MY_CHAT_MEMBER))
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
