@@ -10,6 +10,8 @@ from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMar
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, \
     CallbackContext, ChatMemberHandler
 from pocketbase import PocketBase
+
+import bot
 from services import Db
 import asyncio
 from threading import Thread
@@ -349,6 +351,49 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await info.delete()
 
 
+async def end_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /completed is issued."""
+    await update.message.delete()
+
+    pb_db = Db()
+    if pb_db.active_seesion():
+        # remove inline keyboard from privious listing with message id from kulhun
+        try:
+            info = await context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text="<b>Ending.. Polling Session</b>",
+                parse_mode="HTML"
+            )
+
+            message_id = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
+                0].message_id
+            print(update.effective_chat.id)
+            print(update.message.chat_id)
+            await context.bot.edit_message_reply_markup(
+                chat_id=update.effective_chat.id,
+                message_id=message_id,
+                reply_markup=None
+            )
+
+            await context.bot.edit_message_text(
+                chat_id=info.chat_id,
+                message_id=info.message_id,
+                text="Please be present"
+            )
+
+        except Exception as e:
+            await on_error(context, "completed", e)
+
+    else:
+        await context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="No active team listing session is currently in progress.",
+            parse_mode="HTML"
+        )
+
+    # await info.delete()
+
+
 async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # deleting command
     await update.message.delete()
@@ -484,6 +529,8 @@ def main() -> None:
     application.add_handler(CommandHandler("team", team_maker))
     application.add_handler(CommandHandler("completed", completed))
     application.add_handler(CommandHandler("relist", relist))
+    application.add_handler(CommandHandler("endlist", end_list))
+
     application.add_handler(CallbackQueryHandler(inline_button))
     application.add_handler(ChatMemberHandler(new_member, ChatMemberHandler.MY_CHAT_MEMBER))
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
