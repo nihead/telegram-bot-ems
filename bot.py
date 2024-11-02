@@ -4,7 +4,6 @@
 
 import logging
 import os
-from tkinter.font import names
 
 from dotenv import load_dotenv
 from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
@@ -13,12 +12,10 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from telegram.constants import ChatAction, ParseMode
 from pocketbase import PocketBase
 
-# import bot
-from examples.errorhandlerbot import error_handler
+
 from services import Db
 import asyncio
-from threading import Thread
-import time
+
 
 # Enable logging
 logging.basicConfig(
