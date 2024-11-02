@@ -74,7 +74,7 @@ class Db():
                 "active": True,
                 "attended": False,
                 "on_team": on_team,
-                "kulhun": self.pb.collection('kulhun').get_first_list_item(filter='completed = true').id,
+                "kulhun": self.pb.collection('kulhun').get_first_list_item(filter='completed = false').id,
                 "player": player.id
 
             }

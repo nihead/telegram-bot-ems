@@ -4,14 +4,17 @@
 
 import logging
 import os
+from tkinter.font import names
 
 from dotenv import load_dotenv
-from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler, \
     CallbackContext, ChatMemberHandler
+from telegram.constants import ChatAction, ParseMode
 from pocketbase import PocketBase
 
-import bot
+# import bot
+from examples.errorhandlerbot import error_handler
 from services import Db
 import asyncio
 from threading import Thread
@@ -39,6 +42,8 @@ kb_o = [
     ]
 ]
 
+qid = 0
+
 
 # Define a few command handlers. These usually take the two arguments update and
 # context.
@@ -56,7 +61,7 @@ THANK YOU!
     """
     await update.message.reply_text(
         text=welcome,
-        parse_mode='HTML'
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -71,39 +76,29 @@ async def alert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     msg = update.message.text.strip('/alert')
     await context.bot.send_message(
         chat_id=update.message.chat_id,
-        text="<pre>Notification</pre>",
-        parse_mode='HTML'
-    )
-    await asyncio.sleep(1)
-    await context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text=msg,
+        text=f"<pre>Notification</pre>\n\nmsg",
         parse_mode='HTML'
     )
 
 
 async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    m = update.message.text.split('\n')
+    m = update.message.text.strip('/team').strip().split('\n')
     u_name = update.effective_user.full_name
 
     try:
-        mp = int(m[2])
-        mr = int(m[3])
+        mp = int(m[-2])
+        mr = int(m[-1])
+        desc = '\n'.join(m[:-2])
     except Exception as e:
-        print(e)
         mp = 14
         mr = 2
-
-    try:
-        desc = m[1]
-    except Exception as e:
-        print(e)
         desc = "Kulhun @ Male' city Council\nFrom <b>19:00</b> to <b>20:00</b>"
 
+
     f_msg = f"""
-    <u>Team List</u>
-<b>{desc}</b>
+{'<u>Team List</u>'.center(50,'~')}
+{desc}
 ---------------------
 <u><b>ONTEAM</b></u>
 ---------------------
@@ -126,13 +121,15 @@ Thank you for your patience."""
             text=f"<b>{u_name}</b>, Started Team listing session\nMax players = {mp}\nMax reserved = {mr}",
             parse_mode="HTML",
         )
+        # Add user restrction
+        # await restrict_all(update, context)
 
         await asyncio.sleep(2)
 
         k = await context.bot.send_message(
             chat_id=update.message.chat_id,
             text=f_msg,
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(kb_i_o)
         )
         pb_db.create_kulhun(update.message.from_user.id, desc, k.message_id, mp, mr)
@@ -146,6 +143,8 @@ async def inline_button(update: Update, context) -> None:
     current_message = query.message.text
     chat_id = query.from_user.id
 
+    await context.bot.send_chat_action(chat_id=query.message.chat_id, action=ChatAction.TYPING)
+
     # Determine which button was pressed
     try:
         if query.data == 'IN':
@@ -154,13 +153,12 @@ async def inline_button(update: Update, context) -> None:
 
             if suc:
                 pb_db = Db()
-                print("Making team list")
                 team_list = pb_db.team_list()
                 # get descrption from kulhun
                 desc = pb_db.pb.collection('kulhun').get_list(1, 30, {"filter": 'completed = false'}).items[
                     0].description
                 team_msg = f"""
-<u>Team List</u>
+{'<u>Team List</u>'.center(50,'~')}
 <i>{desc}</i>
 ---------------------
 <u><b>ONTEAM</b></u>
@@ -169,23 +167,33 @@ async def inline_button(update: Update, context) -> None:
 """
 
                 await query.edit_message_text(text=team_msg, reply_markup=InlineKeyboardMarkup(kb_i_o),
-                                              parse_mode="HTML")
+                                              parse_mode=ParseMode.HTML)
                 if no_players + 1 == total_players:
                     await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(kb_o))
+                await query.answer(
+                    text=f"{username}\nAdded to Team list",
+                    show_alert=True
+                )
             else:
-                alert = await query.message.reply_text("May be you are on list")
-                await asyncio.sleep(1)
-                await alert.delete()
+                await query.answer(
+                    text=f"{username}\nYou are Already on the list",
+                    show_alert=True
+                )
 
             # await query.edit_message_text(text="You pressed: IN")
         elif query.data == 'OUT':
 
             pb_db = Db()
             if pb_db.on_list(chat_id) > 0:
+
                 await context.bot.send_message(
                     chat_id=query.message.chat_id,
                     text=f"{username}  takes his name off the list.",
-                    parse_mode="HTML"
+                    parse_mode=ParseMode.HTML
+                )
+                await query.answer(
+                    text=f"{username}\nRemoved from Team list",
+                    show_alert=True
                 )
                 # await query.edit_message_reply_markup(reply_markup=None)
                 await query.delete_message()
@@ -201,17 +209,18 @@ async def inline_button(update: Update, context) -> None:
                     desc = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
                         0].description
                     team_msg = f"""
-<u>Team List</u>
+{'<u>Team List</u>'.center(50,'~')}
 <i>{desc}</i>
 ---------------------
 <u><b>ONTEAM</b></u>
 ---------------------
 {team_list}
 """
+
                     new_list = await context.bot.send_message(
                         chat_id=query.message.chat_id,
                         text=team_msg,
-                        parse_mode="HTML",
+                        parse_mode=ParseMode.HTML,
                         reply_markup=InlineKeyboardMarkup(kb_i_o)
                     )
 
@@ -221,14 +230,13 @@ async def inline_button(update: Update, context) -> None:
                         {"message_id": new_list.message_id})
 
 
+
             else:
-                warning = await context.bot.send_message(
-                    chat_id=query.message.chat_id,
-                    text=f"{username},\nyou are not on the list.\n{chat_id}",
-                    parse_mode="HTML"
+                await query.answer(
+                    text=f"{username}\nYou are not on the list",
+                    show_alert=True
                 )
-                await asyncio.sleep(2)
-                await warning.delete()
+
 
     except Exception as e:
         await on_error(context, "inline Query", e)
@@ -276,7 +284,7 @@ async def add_to_db(tid, query, context):
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
                 text="Max players reached",
-                parse_mode="HTML"
+                parse_mode=ParseMode.HTML
             )
             try:
 
@@ -305,7 +313,7 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     info = await context.bot.send_message(
         chat_id=update.message.chat_id,
         text="Ending team listing session.",
-        parse_mode="HTML"
+        parse_mode=ParseMode.HTML
     )
     pb_db = Db()
     if pb_db.active_seesion():
@@ -327,29 +335,29 @@ async def completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         pb_db.pb.collection('kulhun').update(
             pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0].id,
             {"completed": True})
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="No more team listing session is currently in progress.",
-            parse_mode="HTML"
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            text="<b>Marking Attendance..</b>",
+            message_id=info.message_id,
+            parse_mode=ParseMode.HTML
         )
 
         # mark attended as true on all team
         pb_db.all_attended()
 
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="see you soon",
-            parse_mode="HTML"
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            text="<b>Team Listing Ended</b>",
+            message_id=info.message_id,
+            parse_mode=ParseMode.HTML
         )
     else:
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="No active team listing session is currently in progress.",
-            parse_mode="HTML"
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            text="<b>No Active <i>Polling</i></b>",
+            message_id=info.message_id,
+            parse_mode=ParseMode.HTML
         )
-
-    await info.delete()
-
 
 async def end_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /completed is issued."""
@@ -367,8 +375,7 @@ async def end_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
             message_id = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
                 0].message_id
-            print(update.effective_chat.id)
-            print(update.message.chat_id)
+
             await context.bot.edit_message_reply_markup(
                 chat_id=update.effective_chat.id,
                 message_id=message_id,
@@ -394,49 +401,41 @@ async def end_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # await info.delete()
 
 
-async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE, fun=False) -> None:
     # deleting command
-    await update.message.delete()
+    print("relisting")
+    if not fun:
+        await update.message.delete()
 
+    gid = update.effective_chat.id
     # creating pocketbase instance
     pb_db = Db()
 
-    if pb_db.active_seesion():
-        # remove inline keyboard from privious listing with message id from kulhun
+    try:
+        kulhun = pb_db.pb.collection('kulhun').get_first_list_item(filter= 'completed = false')
+
         try:
-            message_id = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
-                0].message_id
+            message_id = kulhun.message_id
+
+            print(message_id)
 
             await context.bot.delete_message(
-                chat_id=-1001912301677,
-                message_id=message_id
+                chat_id=gid,
+                message_id=int(message_id)
             )
 
         except Exception as e:
-            await on_error(context, "completed", e)
+            await on_error(context, "relisting", e)
 
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="see you soon",
-            parse_mode="HTML"
-        )
-    else:
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="No active team listing session is currently in progress.",
-            parse_mode="HTML"
-        )
+        try:
 
-    try:
-
-        # recreate team list
-        kulhun  = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0]
-        gid = -1001912301677
-        team_list = pb_db.team_list()
-        # get descrption from kulhun
-        desc = kulhun.description
-        team_msg = f"""
-<u>Team List</u>
+            # recreate team list
+            # gid = -1001912301677
+            team_list = pb_db.team_list()
+            # get descrption from kulhun
+            desc = kulhun.description
+            team_msg = f"""
+{'<u>Team List</u>'.center(50,'~')}
 <i>{desc}</i>
 ---------------------
 <u><b>ONTEAM</b></u>
@@ -444,23 +443,28 @@ async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 {team_list}
 """
 
-        new_list = await context.bot.send_message(
+            new_list = await context.bot.send_message(
+                chat_id=gid,
+                text=team_msg,
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(kb_i_o)
+            )
+
+            # update new message id
+            pb_db.pb.collection('kulhun').update(
+                pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0].id,
+                {"message_id": new_list.message_id})
+
+        except Exception as e:
+            await on_error(context, "Relisting error\n", e)
+    except Exception as e:
+        await context.bot.send_message(
             chat_id=gid,
-            text=team_msg,
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(kb_i_o)
+            text="No active team listing session is currently in progress.",
+            parse_mode="HTML"
         )
 
-
-
-        # update new message id
-        pb_db.pb.collection('kulhun').update(
-            pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[0].id,
-            {"message_id": new_list.message_id})
-
-
-    except Exception as e:
-        await on_error(context, "Relisting error\n", e)
+        await on_error(context, "creating kulhun", e)
 
 
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -507,6 +511,82 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def restrict_all(update: Update, context:ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        permissions = ChatPermissions(
+            can_send_messages=False,
+            can_pin_messages=False,
+            can_send_other_messages=False,
+            can_add_web_page_previews=False,
+            can_send_photos=False,
+            can_send_videos=False
+        )
+        await context.bot.restrict_chat_member(
+            chat_id=update.effective_chat.id,
+            permissions=permissions
+        )
+    except Exception as e:
+        await on_error(context, "restrictor", e)
+
+
+async def unknown_command(update: Update, context:ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.delete()
+    pb_db = Db()
+    u_name = pb_db.pb.collection('players').get_first_list_item(filter=f'tid={update.effective_user.id}')
+    print(f"name: {u_name.u_name}")
+    permissions = ChatPermissions(
+        can_send_messages=False,
+        can_pin_messages=False,
+        can_send_other_messages=False,
+        can_add_web_page_previews=False,
+        can_send_photos=False,
+        can_send_videos=False
+    )
+
+    print(update.effective_chat.id)
+    print(update.effective_user.id)
+
+    await on_error(context, "unknown", update)
+
+    await context.bot.restrict_chat_member(
+        chat_id=update.effective_chat.id,
+        user_id=update.effective_user.id,
+        permissions=permissions
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="<i>Please Contact One of Group admin to regain Group permissions</i>",
+        parse_mode=ParseMode.HTML
+    )
+
+    await asyncio.sleep(3)
+
+    if pb_db.active_seesion():
+        print("calling for relist")
+        await relist(update, context, True)
+
+
+async def _is_admin(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Check if the user is an admin"""
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    try:
+        user = await context.bot.get_chat_member(chat_id, user_id)
+        is_admin = user.status in ['creator', 'administrator']
+
+        if not is_admin:
+            await update.message.reply_text("Only administrators can use this command.")
+
+        return is_admin
+    except Exception:
+        await update.message.reply_text("Failed to verify Member status.")
+        return False
+
+
+
+
 async def on_error(context, fun, msg) -> None:
     await context.bot.send_message(
         chat_id=498123938,
@@ -530,6 +610,9 @@ def main() -> None:
     application.add_handler(CommandHandler("completed", completed))
     application.add_handler(CommandHandler("relist", relist))
     application.add_handler(CommandHandler("endlist", end_list))
+
+    #Unknown commands
+    application.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
     application.add_handler(CallbackQueryHandler(inline_button))
     application.add_handler(ChatMemberHandler(new_member, ChatMemberHandler.MY_CHAT_MEMBER))
