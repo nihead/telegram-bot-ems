@@ -94,11 +94,12 @@ async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
     f_msg = f"""
-{'<u>Team List</u>'.center(50,'~')}
+{'<u>Team List</u>'.center(30,'~')}
 {desc}
----------------------
-<u><b>ONTEAM</b></u>
----------------------
+
+<pre>ON TEAM</pre>
+1.
+
     """
 
     pb_db = Db()
@@ -155,11 +156,10 @@ async def inline_button(update: Update, context) -> None:
                 desc = pb_db.pb.collection('kulhun').get_list(1, 30, {"filter": 'completed = false'}).items[
                     0].description
                 team_msg = f"""
-{'<u>Team List</u>'.center(50,'~')}
+{'<u>Team List</u>'.center(30,'~')}
 <i>{desc}</i>
----------------------
-<u><b>ONTEAM</b></u>
----------------------
+
+<pre>ON TEAM</pre>
 {team_list}
 """
 
@@ -188,6 +188,7 @@ async def inline_button(update: Update, context) -> None:
                     text=f"{username}  takes his name off the list.",
                     parse_mode=ParseMode.HTML
                 )
+                print("displayinginfo")
                 await query.answer(
                     text=f"{username}\nRemoved from Team list",
                     show_alert=True
@@ -196,6 +197,7 @@ async def inline_button(update: Update, context) -> None:
                 await query.delete_message()
 
                 # mark user out from list & updating from reserved
+                print("Updating database///")
                 suc = pb_db.off_list(chat_id)
 
                 # recreate team list
@@ -206,11 +208,10 @@ async def inline_button(update: Update, context) -> None:
                     desc = pb_db.pb.collection('kulhun').get_list(1, 20, {"filter": 'completed = false'}).items[
                         0].description
                     team_msg = f"""
-{'<u>Team List</u>'.center(50,'~')}
+{'<u>Team List</u>'.center(30,'~')}
 <i>{desc}</i>
----------------------
-<u><b>ONTEAM</b></u>
----------------------
+
+<pre>ON TEAM</pre>
 {team_list}
 """
 
@@ -432,11 +433,10 @@ async def relist(update: Update, context: ContextTypes.DEFAULT_TYPE, fun=False) 
             # get descrption from kulhun
             desc = kulhun.description
             team_msg = f"""
-{'<u>Team List</u>'.center(50,'~')}
+{'<u>Team List</u>'.center(30,'~')}
 <i>{desc}</i>
----------------------
-<u><b>ONTEAM</b></u>
----------------------
+
+<pre>ONTEAM</pre>
 {team_list}
 """
 

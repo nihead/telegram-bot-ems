@@ -1,3 +1,5 @@
+from os.path import expanduser
+
 from pocketbase import PocketBase
 from dotenv import load_dotenv
 import os
@@ -129,7 +131,7 @@ class Db():
             team_list += f"{i + 1}. {name}\n"
 
         if reserved.total_items > 0:
-            team_list += f"-------------------\nRESERVED\n-------------------\n"
+            team_list += f"<pre>RESERVED</pre>\n"
             for i, res in enumerate(reserved.items):
                 name = res.expand['player'].t_name
                 team_list += f"{i + 1}. {name}\n"
@@ -137,17 +139,52 @@ class Db():
 
     # updates
     # mark player off the list
+
     def off_list(self, tid):
         try:
-            players = self.pb.collection('team').get_list(1, 20, {"filter": f'active = true && tid={tid}'})
+            player = self.pb.collection('team').get_first_list_item(filter=f'active = true && tid={tid}')
+            pid = player.id
+            print(pid)
+            player_info = self.pb.collection('players').get_first_list_item(filter=f'tid={tid}')
+            print(player_info.u_name)
+
             reserved = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = false'})
+
+            # deleting player
+            self.pb.collection('team').delete(pid)
+            if reserved.total_items > 0 and player.on_team:
+                self.pb.collection('team').update(reserved.items[0].id,  {"on_team": True})
+
+            # updating statistics
+            self.pb.collection('players').update(player_info.id, {"total_enrolled": player_info.total_enrolled - 1})
+
+            return True
+
+        except Exception as e:
+            print("error while off the list")
+            print(e)
+            return False
+
+    def off_list_old(self, tid):
+        print(f"Taking:- {tid}")
+        ##remake logic
+        try:
+            players = self.pb.collection('team').get_list(1, 20, {"filter": f'active = true && tid={tid}'})
+            print(players.items)
+            reserved = self.pb.collection('team').get_list(1, 20, {"filter": 'active = true && on_team = false'})
+            print(reserved.items)
             # self.pb.collection('team').update(players.items[0].id, {"active": False})
+            print("Deleting player")
             self.pb.collection('team').delete(players.items[0].id)
             if reserved.total_items > 0:
+                print("updating player")
                 self.pb.collection('team').update(reserved.items[0].id, {"on_team": True})
+            print("player updates")
 
             # update player info total_enrolled from player where tid = tid
             player = self.pb.collection('players').get_list(1, 20, {"filter": f'tid = {tid}'}).items
+            print("Player name - ")
+            print(player[0].u_name)
             self.pb.collection('players').update(player[0].id, {"total_enrolled": player[0].total_enrolled - 1})
             return True
         except Exception as e:
@@ -165,5 +202,5 @@ class Db():
 
 if __name__ == "__main__":
     pb = Db()
-    active = pb.add_to_team(498123938, True)
+    active = pb.off_list(5129402698)
     print(active)
