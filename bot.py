@@ -89,7 +89,7 @@ async def team_maker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         desc = '\n'.join(m[:-2])
     except Exception as e:
         mp = 14
-        mr = 2
+        mr = 0
         desc = "Kulhun @ Male' city Council\nFrom <b>19:00</b> to <b>20:00</b>"
 
 
