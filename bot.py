@@ -73,7 +73,7 @@ async def alert_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     msg = update.message.text.strip('/alert')
     await context.bot.send_message(
         chat_id=update.message.chat_id,
-        text=f"<pre>Notification</pre>\n\nmsg",
+        text=f"<pre>Notification</pre>\n\n{msg}",
         parse_mode='HTML'
     )
 
